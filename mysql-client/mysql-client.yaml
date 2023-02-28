@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mysql-client
+spec:
+  containers:
+  - name: mysql-client
+    image: harbor.middleware.com/shenkonghui/mysql-client
+    command: ["/bin/sh", "-c", "cp /shell/insert.sh / && chmod +x /insert.sh && /insert.sh"]
+    volumeMounts:
+    - name: config
+      mountPath: "/shell"
+    env:
+    - name: host
+      value: mysql-proxya-proxy
+    - name: pass
+      value: "iF1VdwzSEm"
+    - name: user
+      value: root
+    resources:
+      requests:
+        memory: "1Mi"
+        cpu: "1m"
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+  volumes:
+  - name: config
+    configMap:
+      name: mysql-client-conf
+  tolerations:
+  - effect: NoSchedule
+    key: harm.cn/type
+    operator: Equal
+    value: active-active
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-client-conf
+data:
+  init.sql: |
+    CREATE DATABASE  IF NOT EXISTS test;
+
+    use test;
+
+    CREATE TABLE IF NOT EXISTS `user`(
+    `id` INT UNSIGNED AUTO_INCREMENT,
+    `name` VARCHAR(100) NOT NULL,
+    `create_time` timestamp NOT NULL
+    DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ( `id` )
+    )ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+    CREATE DATABASE  IF NOT EXISTS sbtest;
+
+  insert.sh: |
+    #!/bin/sh
+    if [ ! -n "$pass" ]; then
+    echo "PASS IS NULL set to Hc@Cloud01"
+      pass='abcd!@#$'
+    else
+      echo "pass=$pass"
+    fi
+
+    if [ ! -n "$host" ]; then
+      echo "HOST IS NULL set to 127.0.0.1"
+      host=127.0.0.1
+    else
+      echo "host=$host"
+    fi
+    
+    if [ ! -n "$user" ]; then
+      echo "HOST IS NULL set to 127.0.0.1"
+      user=operator
+    else
+      echo "user=$user"
+    fi
+
+    if [ ! -n "$port" ]; then
+      echo "port=3306"
+      port=3306
+    else
+      echo "port=$port"
+    fi
+
+
+    mysql -u $user -P$port -h $host -p$pass < /shell/init.sql
+    while true; do date; mysql --connect-timeout=1 -P$port -u $user -h $host -p$pass -e 'INSERT INTO test.user (name) VALUES ("1");';done;
