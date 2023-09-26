@@ -1,0 +1,9 @@
+version: '3'
+services:
+  cpp-build:
+    build: .
+    ports:
+    - "5000:5000"
+    volumes:
+    - ./data:/home/data
+    command: ["/bin/bash", "-c","sleep 99999999999999999999"]
